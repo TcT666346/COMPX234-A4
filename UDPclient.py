@@ -56,3 +56,18 @@ def download_file(sock, server_host, data_port, filename, file_size):
             print('*', end='', flush=True)
         
         print(f"\nDownloaded {downloaded} bytes")
+
+     # 发送关闭请求
+    close_msg = f"FILE {filename} CLOSE"
+    try:
+        response = reliable_send_receive(
+            sock, 
+            (server_host, data_port), 
+            close_msg
+        )
+        if response != f"FILE {filename} CLOSE_OK":
+            print("Close confirmation error")
+    except Exception as e:
+        print(f"Close failed: {str(e)}")
+    
+    return True    
