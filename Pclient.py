@@ -54,3 +54,60 @@ def handle_file_transmission(client_addr, filename, file_size):
                     print(f"Error handling request: {str(e)}")
     finally:
         data_sock.close()
+
+
+# 全局变量（主套接字）
+main_sock = None
+
+def main():
+    global main_sock
+    
+    if len(sys.argv) != 2:
+        print("Usage: python UDPserver.py <port>")
+        return
+    
+    port = int(sys.argv[1])
+    
+    # 创建主UDP套接字
+    main_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    main_sock.bind(('', port))
+    print(f"Server listening on port {port}")
+    
+    while True:
+        try:
+            # 等待下载请求
+            data, addr = main_sock.recvfrom(1024)
+            message = data.decode().strip()
+            parts = message.split()
+            
+            if len(parts) < 2 or parts[0] != "DOWNLOAD":
+                continue
+            
+            filename = parts[1]
+            print(f"Received DOWNLOAD request for {filename} from {addr}")
+            
+            # 检查文件是否存在
+            if not os.path.exists(filename):
+                main_sock.sendto(f"ERR {filename} NOT_FOUND".encode(), addr)
+                print(f"File {filename} not found")
+                continue
+            
+            # 获取文件大小
+            file_size = os.path.getsize(filename)
+            
+            # 创建新线程处理文件传输
+            threading.Thread(
+                target=handle_file_transmission,
+                args=(addr, filename, file_size)
+            ).start()
+            
+        except KeyboardInterrupt:
+            print("\nServer shutting down...")
+            break
+        except Exception as e:
+            print(f"Error: {str(e)}")
+    
+    main_sock.close()
+
+if __name__ == "__main__":
+    main()
